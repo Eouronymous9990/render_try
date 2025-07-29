@@ -1,20 +1,22 @@
-# app/main.py
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
-from ultralytics import YOLO
-import numpy as np
 import cv2
+import numpy as np
+from .yolo_model import model
 
 app = FastAPI()
-model = YOLO("yolov8n.pt")  # أو المسار لموديلك
 
-@app.post("/detect/")
+@app.get("/")
+def read_root():
+    return {"msg": "YOLOv8 Object Detection API running on Render!"}
+
+@app.post("/detect")
 async def detect(file: UploadFile = File(...)):
     contents = await file.read()
     nparr = np.frombuffer(contents, np.uint8)
-    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-    results = model(image)
-    boxes = results[0].boxes.xyxy.cpu().numpy().tolist()
+    results = model(img)
+    detections = results[0].boxes.data.tolist()
 
-    return {"detections": boxes}
+    return JSONResponse({"detections": detections})
